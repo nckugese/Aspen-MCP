@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 5494c723334b27b4a837863e97784ffc30057023
 ````markdown
 # Aspen Plus MCP Integration
 
