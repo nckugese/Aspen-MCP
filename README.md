@@ -1,4 +1,3 @@
-````markdown
 # Aspen Plus MCP Integration
 
 This project integrates Aspen Plus with a custom MCP (Model Control Program) server, allowing users to open, manage, and close Aspen Plus sessions through Python and MCP. The server facilitates interaction with Aspen Plus simulations via tools defined in `FastMCP`.
@@ -24,7 +23,7 @@ First, ensure you have Python installed. Then, install the required Python packa
 
 ```bash
 pip install pywin32 fastmcp
-````
+```
 
 ## Usage
 
