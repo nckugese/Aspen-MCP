@@ -1,88 +1,143 @@
 # Aspen Plus MCP Server
 
-透過 MCP 協議操控 Aspen Plus 的模擬伺服器。
+An MCP server for controlling Aspen Plus simulations via the Model Context Protocol.
 
----
+## Workflow — Building a Simulation from Scratch
 
-## 0. 總則 — 從零開始建模流程
+1. Open Aspen Plus and load a `.bkp` file
+2. Add components (e.g. WATER, ETHANOL, METHANOL)
+3. Set the property method (e.g. NRTL, PENG-ROB, UNIQUAC, IDEAL)
+4. Place blocks and streams
+5. Connect streams to block ports
+6. Configure block and stream parameters
+7. Run the simulation
+8. Read results
 
-1. 開啟 Aspen Plus 並載入 `.bkp` 檔案
-2. 添加 Component（例如 WATER、ETHANOL、METHANOL）
-3. 設定物性方法（例如 NRTL、PENG-ROB、UNIQUAC、IDEAL）
-4. 放置 Block 與 Stream
-5. 連接 Stream 到 Block 的 Port
-6. 設定 Block 與 Stream 參數
-7. 執行模擬
-8. 讀取結果
-
-> **提示：** 當找不到正確的參數名稱、port 名稱或 block 類型時，請使用 `search_properties` 工具以關鍵字搜尋。它會搜尋所有 YAML 定義檔中的 properties、ports 等資訊，回傳匹配的結果與說明。
+> **Tip:** Use `search_properties` to find available property names, port names, or block types by keyword. It searches all YAML definition files and returns matching results with descriptions.
 >
-> 範例：`search_properties("radfrac distillate")` → 會列出 RadFrac 相關的 distillate port 和 property。
+> Example: `search_properties("radfrac distillate")` lists RadFrac-related distillate ports and properties.
 
 ---
 
-## 1. Block 的使用方式
+## Available Tools (18)
 
-### RadFrac（蒸餾塔）
+### Main (5)
 
-Ports：
+| Tool | Description |
+|------|-------------|
+| `open_aspen_plus` | Open Aspen Plus and load a `.bkp` file |
+| `close_aspen_plus` | Close an Aspen Plus session |
+| `list_aspen_sessions` | List all active sessions |
+| `run_simulation` | Run the simulation |
+| `save_simulation` | Save the simulation to disk |
 
-| Port | 說明 |
-|------|------|
-| F(IN) | 進料口 |
-| LD(OUT) | 液相蒸餾物出口（塔頂） |
-| VD(OUT) | 氣相蒸餾物出口（塔頂） |
-| B(OUT) | 塔底出口 |
+### Flowsheet (5)
 
-參數：
+| Tool | Description |
+|------|-------------|
+| `place_block` | Place a new block on the flowsheet |
+| `remove_block` | Remove a block from the flowsheet |
+| `place_stream` | Place a new stream on the flowsheet |
+| `remove_stream` | Remove a stream from the flowsheet |
+| `connect_stream` | Connect a stream to a block port |
 
-| 參數名稱 | 型別 | 說明 |
-|----------|------|------|
-| number_of_stages | integer | 理論板數 |
-| condenser_type | string | 冷凝器類型（TOTAL、PARTIAL-V、PARTIAL-V-L、NONE） |
-| reboiler_type | string | 再沸器類型（KETTLE、THERMOSIPHON、NONE） |
-| reflux_ratio | float | 回流比 |
-| distillate_rate | float | 蒸餾物與進料比（D:F） |
-| feed_stage | integer | 進料板位置（需指定 stream_name） |
-| condenser_pressure | float | 冷凝器壓力（第 1 板壓力） |
+### Properties (3)
 
-### Heater（加熱器 / 冷卻器）
+| Tool | Description |
+|------|-------------|
+| `get_property_method` | Get the current global property method |
+| `set_property_method` | Set the global property method |
+| `add_component` | Add a component to the simulation |
 
-| 參數名稱 | 型別 | 說明 |
-|----------|------|------|
-| temperature | float | 出口溫度 |
-| pressure | float | 出口壓力 |
-| duty | float | 熱負荷 |
-| vapor_fraction | float | 出口氣相分率 |
+### Block (2)
 
-### Pump（泵）
+| Tool | Description |
+|------|-------------|
+| `get_block_value` | Get a property value from a block |
+| `set_block_value` | Set a property value on a block |
 
-| 參數名稱 | 型別 | 說明 |
-|----------|------|------|
-| discharge_pressure | float | 出口壓力 |
-| pressure_increase | float | 增壓量 |
-| efficiency | float | 泵效率 |
+### Stream (2)
+
+| Tool | Description |
+|------|-------------|
+| `get_stream_value` | Get a property value from a stream |
+| `set_stream_value` | Set a property value on a stream |
+
+### Search (1)
+
+| Tool | Description |
+|------|-------------|
+| `search_properties` | Search available properties by keyword |
 
 ---
 
-## 2. Stream 的使用方式
+## Block Reference
 
-### MATERIAL（物質流）
+### RadFrac (Distillation Column)
 
-輸入參數：
+Ports:
 
-| 參數名稱 | 型別 | 說明 |
-|----------|------|------|
-| temperature | float | 溫度 |
-| pressure | float | 壓力 |
-| total_flow | float | 總流量 |
-| vapor_fraction | float | 氣相分率 |
-| component_flow | float | 各組分流量（需指定 component） |
+| Port | Description |
+|------|-------------|
+| F(IN) | Feed inlet |
+| LD(OUT) | Liquid distillate outlet (top) |
+| VD(OUT) | Vapor distillate outlet (top) |
+| B(OUT) | Bottoms outlet |
 
-輸出參數（模擬後讀取）：
+Properties:
 
-| 參數名稱 | 型別 | 說明 |
-|----------|------|------|
-| output_temperature | float | 輸出溫度 |
-| output_component_flow | float | 輸出各組分莫耳流量（需指定 component） |
-| output_total_flow | float | 輸出總流量 |
+| Property | Type | Description |
+|----------|------|-------------|
+| number_of_stages | integer | Number of theoretical stages |
+| condenser_type | string | Condenser type (TOTAL, PARTIAL-V, PARTIAL-V-L, NONE) |
+| reboiler_type | string | Reboiler type (KETTLE, THERMOSIPHON, NONE) |
+| reflux_ratio | float | Reflux ratio |
+| distillate_to_feed_ratio | float | Distillate to feed ratio (D:F) |
+| feed_stage | integer | Feed stage number (requires `stream_name` in extra_params) |
+| condenser_pressure | float | Condenser pressure (stage 1 pressure) |
+
+### Heater
+
+| Property | Type | Description |
+|----------|------|-------------|
+| temperature | float | Outlet temperature |
+| pressure | float | Outlet pressure |
+| duty | float | Heat duty |
+| vapor_fraction | float | Outlet vapor fraction |
+
+### Pump
+
+| Property | Type | Description |
+|----------|------|-------------|
+| discharge_pressure | float | Discharge pressure |
+| pressure_increase | float | Pressure increase |
+| efficiency | float | Pump efficiency |
+
+---
+
+## Stream Reference
+
+### MATERIAL
+
+Input properties:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| temperature | float | Stream temperature |
+| pressure | float | Stream pressure |
+| total_flow | float | Total flow rate |
+| vapor_fraction | float | Vapor fraction |
+| component_flow | float | Component flow rate (requires `component` in extra_params) |
+
+Output properties (available after simulation):
+
+| Property | Type | Description |
+|----------|------|-------------|
+| output_temperature | float | Output stream temperature |
+| output_component_flow | float | Output component mole flow rate (requires `component` in extra_params) |
+
+---
+
+## Extending
+
+You can add new block/stream definitions by creating YAML files in `definitions/`, or use the `create_tool` tool at runtime to generate them automatically. The searcher reloads immediately after a new definition is created.
