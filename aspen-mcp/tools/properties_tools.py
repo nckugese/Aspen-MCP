@@ -16,9 +16,30 @@ def get_property_method(manager, session_name: str) -> str:
 
 def set_property_method(manager, session_name: str, method: str = "NRTL") -> str:
     """Set the global property method (e.g. NRTL, UNIQUAC, PENG-ROB, IDEAL)."""
-    return manager.set_node_value(
+    result = manager.set_node_value(
         session_name, r"\Data\Properties\Specifications\Input\GOPSETNAME", method
     )
+    # Auto-load binary interaction params from databank
+    # After setting the property method, Aspen creates parameter nodes but
+    # doesn't automatically retrieve databank values (e.g. NRTL-1).
+    # App-level Reconcile creates the nodes, then touching the Input node
+    # via Reconcile triggers the databank retrieval (the call fails with
+    # "not yet implemented" but has the necessary side effect).
+    app = manager.get_app(session_name)
+    if app is not None:
+        try:
+            app.Reconcile(1 | 1048576 | 2097152)
+        except Exception:
+            pass
+        try:
+            n = app.Tree.FindNode(
+                r"\Data\Properties\Parameters\Binary Interaction\NRTL-1\Input"
+            )
+            if n is not None:
+                n.Reconcile(1)
+        except Exception:
+            pass
+    return result
 
 
 def add_component(manager, session_name: str, component_id: str) -> str:
