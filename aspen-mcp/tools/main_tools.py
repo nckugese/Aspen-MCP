@@ -63,6 +63,75 @@ def save_simulation(manager, session_name: str, file_path: str = None) -> str:
         return f"Failed to save session '{session_name}'. Error: {exc}"
 
 
+<<<<<<< Updated upstream
+=======
+def check_inputs(manager, session_name: str) -> str:
+    """Check if all required inputs are complete before running.
+
+    Uses NextIncomplete(64) to walk the tree and find all incomplete input nodes.
+    """
+    app = manager.get_app(session_name)
+    if app is None:
+        return f"No active session named '{session_name}'."
+    try:
+        incomplete = []
+        node = app.Tree.FindNode(r"\Data")
+        seen = set()
+        for _ in range(200):  # safety limit
+            result = node.NextIncomplete(64)  # HAP_INPUT_INCOMPLETE
+            # COM returns (path_or_node, code) tuple
+            if isinstance(result, tuple):
+                item = result[0]
+            else:
+                item = result
+            if item is None:
+                break
+            # item may be a path string or a COM node
+            if isinstance(item, str):
+                path = item
+                if path in seen:
+                    break
+                seen.add(path)
+                incomplete.append(f"  - {path}")
+                # navigate to this node for next iteration
+                next_node = app.Tree.FindNode(path)
+                if next_node is None:
+                    break
+                node = next_node
+            else:
+                # COM node object
+                name = item.Name
+                if name in seen:
+                    break
+                seen.add(name)
+                try:
+                    prompt = item.AttributeValue(19)  # HAP_PROMPT
+                except Exception:
+                    prompt = ""
+                if prompt:
+                    incomplete.append(f"  - {name}: {prompt}")
+                else:
+                    incomplete.append(f"  - {name}")
+                node = item
+
+        if not incomplete:
+            return "All required inputs are complete. Ready to run."
+        return f"Incomplete inputs ({len(incomplete)}):\n" + "\n".join(incomplete)
+    except Exception as exc:
+        return f"Error checking inputs: {exc}"
+
+
+def get_node_value(manager, session_name: str, aspen_path: str) -> str:
+    """Read a raw value from the Aspen Plus data tree."""
+    return manager.get_node_value(session_name, aspen_path)
+
+
+def set_node_value(manager, session_name: str, aspen_path: str, value) -> str:
+    """Write a raw value to the Aspen Plus data tree."""
+    return manager.set_node_value(session_name, aspen_path, value)
+
+
+>>>>>>> Stashed changes
 def list_node_children(manager, session_name: str, aspen_path: str) -> str:
     """List all child elements of a node in the Aspen Plus data tree."""
     app = manager.get_app(session_name)
