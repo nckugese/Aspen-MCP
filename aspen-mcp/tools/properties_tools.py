@@ -54,17 +54,100 @@ def set_property_method(manager, session_name: str, method: str = "NRTL") -> str
     return result
 
 
+def _generate_short_id(component_id: str) -> str:
+    """Generate a short (<=8 char) component ID from a long name."""
+    # Remove common separators, take first 8 chars uppercase
+    short = component_id.upper().replace(" ", "").replace("-", "").replace(",", "")
+    if len(short) <= 8:
+        return short
+    # Try abbreviation: take first 8 alphanumeric chars
+    return short[:8]
+
+
 def add_component(manager, session_name: str, component_id: str) -> str:
-    """Add a component to the simulation component list."""
+    """Add a component to the simulation component list.
+
+    Accepts any component name, synonym, CAS number, or short ID.
+    If the name exceeds 8 characters, a short ID is auto-generated and the
+    full name is written to ANAME so Aspen resolves it from the databank.
+    """
     app = manager.get_app(session_name)
     if app is None:
         return f"No active session named '{session_name}'."
     try:
-        node = app.Tree.FindNode(r"\Data\Components\Specifications\Input\TYPE")
-        tlb = node.Elements
+        needs_aname = len(component_id) > 8
+        if needs_aname:
+            label = _generate_short_id(component_id)
+        else:
+            label = component_id
+
+        # Check for duplicate label and make unique if needed
+        type_node = app.Tree.FindNode(r"\Data\Components\Specifications\Input\TYPE")
+        existing = set()
+        for i in range(type_node.Elements.Count):
+            existing.add(type_node.Elements.Item(i).Name.upper())
+        if label.upper() in existing:
+            base = label[:6] if len(label) > 6 else label
+            for suffix in range(1, 100):
+                candidate = f"{base}{suffix}"
+                if len(candidate) <= 8 and candidate.upper() not in existing:
+                    label = candidate
+                    break
+
+        tlb = type_node.Elements
         tlb.InsertRow(0, 0)
-        tlb.SetLabel(0, 0, False, component_id)
+        tlb.SetLabel(0, 0, False, label)
+
+        if needs_aname:
+            aname_node = app.Tree.FindNode(
+                rf"\Data\Components\Specifications\Input\ANAME\{label}"
+            )
+            if aname_node is not None:
+                aname_node.Value = component_id
+
         _reconcile_binary_interactions(app)
-        return f"Component '{component_id}' added."
+
+        # Read back what Aspen resolved
+        resolved = ""
+        try:
+            aname = app.Tree.FindNode(
+                rf"\Data\Components\Specifications\Input\ANAME\{label}"
+            )
+            dbname = app.Tree.FindNode(
+                rf"\Data\Components\Specifications\Input\DBNAME\{label}"
+            )
+            if aname:
+                resolved += f", alias={aname.Value}"
+            if dbname:
+                resolved += f", dbname={dbname.Value}"
+        except Exception:
+            pass
+
+        if needs_aname:
+            return f"Component '{label}' added (from '{component_id}'{resolved})."
+        return f"Component '{label}' added{resolved}."
     except Exception as exc:
         return f"Failed to add component '{component_id}': {exc}"
+
+
+def remove_component(manager, session_name: str, component_id: str) -> str:
+    """Remove a component from the simulation component list by its label ID."""
+    app = manager.get_app(session_name)
+    if app is None:
+        return f"No active session named '{session_name}'."
+    try:
+        type_node = app.Tree.FindNode(r"\Data\Components\Specifications\Input\TYPE")
+        tlb = type_node.Elements
+        # Find the component index by label (case-insensitive)
+        target_idx = None
+        for i in range(tlb.Count):
+            if tlb.Item(i).Name.upper() == component_id.upper():
+                target_idx = i
+                break
+        if target_idx is None:
+            return f"Component '{component_id}' not found."
+        tlb.RemoveRow(0, target_idx)
+        _reconcile_binary_interactions(app)
+        return f"Component '{component_id}' removed."
+    except Exception as exc:
+        return f"Failed to remove component '{component_id}': {exc}"

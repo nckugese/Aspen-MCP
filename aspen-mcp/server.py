@@ -13,7 +13,7 @@ from mcp.server.fastmcp import FastMCP
 from aspen_manager import AspenPlusManager
 from searcher import DefinitionSearcher
 from tools import main_tools, flowsheet_tools, block_tools, stream_tools, create_tools
-from tools.properties_tools import get_property_method as _get_prop, set_property_method as _set_prop, add_component as _add_comp
+from tools.properties_tools import get_property_method as _get_prop, set_property_method as _set_prop, add_component as _add_comp, remove_component as _rm_comp
 from searcher.tool_searcher import search_properties as _search_props
 from searcher.discover_ports import discover_ports as _discover_ports
 
@@ -160,8 +160,18 @@ def set_property_method(session_name: str, method: str) -> str:
 
 @mcp.tool()
 def add_component(session_name: str, component_id: str) -> str:
-    """Add a component to the simulation component list (e.g. WATER, ETHANOL, METHANOL)"""
+    """Add a component to the simulation component list (e.g. WATER, ETHANOL, METHANOL).
+
+    Accepts any component name, synonym, CAS number, or short ID.
+    Long names are auto-resolved via the Aspen databank.
+    """
     return _add_comp(manager, session_name, component_id)
+
+
+@mcp.tool()
+def remove_component(session_name: str, component_id: str) -> str:
+    """Remove a component from the simulation component list by its label ID"""
+    return _rm_comp(manager, session_name, component_id)
 
 
 # ==================================================================
