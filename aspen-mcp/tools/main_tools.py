@@ -36,11 +36,31 @@ def reinit_simulation(manager, session_name: str) -> str:
 
 
 def run_simulation(manager, session_name: str) -> str:
-    """Run the simulation in a given session."""
+    """Run the simulation in a given session.
+
+    Checks that all required inputs are complete before running,
+    matching the behavior of the Aspen Plus UI Run button.
+    """
     app = manager.get_app(session_name)
     if app is None:
         return f"No active session named '{session_name}'."
     try:
+        # Check input completeness via COMPSTATUS attribute on the root Data node
+        # HAP_COMPSTATUS = 12, HAP_INPUT_INCOMPLETE = 64, HAP_INPUT_COMPLETE = 128
+        root = app.Tree.FindNode(r"\Data")
+        if root is not None:
+            try:
+                status = root.AttributeValue(12)  # HAP_COMPSTATUS
+                if isinstance(status, int):
+                    if status & 64:  # HAP_INPUT_INCOMPLETE
+                        return (
+                            f"Cannot run simulation '{session_name}': "
+                            "required inputs are incomplete. "
+                            "Use check_inputs to see what is missing."
+                        )
+            except Exception:
+                pass  # If status check fails, fall through to try running
+
         app.Run2()
         return f"Simulation '{session_name}' run completed."
     except Exception as exc:
